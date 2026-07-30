@@ -163,7 +163,12 @@ def main():
     log(f"cuda disponible: {torch.cuda.is_available()}")
     if torch.cuda.is_available():
         log(f"GPU: {torch.cuda.get_device_name(0)}")
-    log(f"nnunetv2: {nnunetv2.__version__}")
+    import importlib.metadata
+    try:
+        nnunet_version = importlib.metadata.version('nnunetv2')
+    except:
+        nnunet_version = "unknown"
+    log(f"nnunetv2: {nnunet_version}")
     log(f"USE_SOFT: {USE_SOFT}")
 
     # --- predictor ENSEMBLE hard ---
