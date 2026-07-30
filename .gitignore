@@ -1,0 +1,69 @@
+# Datasets y datos crudos
+Dataset501/
+Dataset_Validation_Oficial/
+nnUNet_data/
+imagesVal/
+stripper_input/
+stripper_output/
+test_local_fold0/
+val_cases_temp/
+val_interno_4mod/
+*.nii
+*.nii.gz
+*.nrrd
+
+# Predicciones (regenerables)
+predsVal/
+predsVal_final/
+predsVal_final_v2/
+predsVal_sub/
+preds_combinada_final2/
+preds_combinado_final/
+preds_ensemble_oficial/
+preds_final_ensemble/
+preds_oof_construidas/
+preds_optima_interno/
+preds_optima_oficial/
+preds_soft_interno/
+preds_soft_oficial/
+preds_soft_test/
+
+# Modelos y pesos
+models/
+*.pth
+*.pt
+*.ckpt
+*.joblib
+
+# Submissions generadas (zips, regenerables desde el código)
+submission_*.zip
+resultados_502.zip
+features_ed.npz
+
+# Repos de terceros / entornos
+peds-brain-auto-skull-strip/
+.udocker/
+libpod/
+.cache/
+
+# Logs
+*.log
+nohup.out
+log_preparacion.txt
+
+# Cache / temporales
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+venv/
+env/
+.venv/
+
+# Stray
+/0
+
+# Predicciones dentro del pipeline (regenerables)
+soft_submission_pipeline/raw_preds/
+soft_submission_pipeline/raw_preds_prob/
+*.npz
+*.pkl
