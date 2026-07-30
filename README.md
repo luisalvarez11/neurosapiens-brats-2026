@@ -1,124 +1,100 @@
-# Docker BraTS-PEDs 2026 Task 2 — NeuroSapiens
+# BraTS-PEDs 2026 - Task 2 | Team NeuroSapiens
 
-Contenedor de inferencia que replica la submission **9774214** (ensemble 5-fold +
-WT combinado + CC logistica).
+[![Challenge](https://img.shields.io/badge/Challenge-BraTS--PEDs_2026-blue)](https://www.synapse.org/)
+[![Task](https://img.shields.io/badge/Task-2_Pediatric_Glioma-orange)]()
 
-## Contenido
-- `Dockerfile` — imagen con CUDA 12.8, PyTorch 2.8, nnU-Net 2.8.1.
-- `predict.py` — inferencia: lee `/input`, escribe `/output` plano.
-- `preparar_modelos.sh` — copia los pesos necesarios a `./models/`.
-- `README.md` — este fichero.
+Official repository for the inference pipeline of **Team NeuroSapiens** (Submission ID: `9774214`) for the BraTS-PEDs 2026 Task 2 Challenge.
 
-## Pipeline que ejecuta
-1. Lee cada carpeta de caso en `/input` (4 modalidades: t1n, t1c, t2w, t2f).
-2. Inferencia con el **ensemble 5-fold** (cascada 502→501).
-3. WT combinado = WT_hard OR (TC_soft > 0.5)  [si el modelo soft esta incluido].
-4. Remapeo a etiquetas oficiales: ET=1, NET=2, CC=3, ED=4.
-5. CC: logistica de intensidad (T1c, T2w) con umbral 0.90.
-6. Escribe `{caseID}.nii.gz` en `/output` (estructura plana).
+This repository provides the containerized inference code used to evaluate our models, featuring a custom 5-fold ensemble, soft-label probabilistic guidance, and a novel Topology-Aware Logic Refinement.
 
 ---
 
-## PASO 1 — Preparar los pesos (en el pod, donde estan los modelos)
+## 🧠 Overview & Pipeline
 
-```bash
-cd /ruta/al/docker_bratsped
-bash preparar_modelos.sh
+Our approach tackles the complexities of pediatric glioma segmentation by relying on a robust cascaded architecture combined with custom post-processing to avoid anatomical inconsistencies.
+
+1. **Base Architecture:** 5-fold nnU-Net ensemble (Cascade 502 → 501).
+2. **Probabilistic Guidance:** We integrate a Soft-Label Model (Trainer: `nnUNetTrainerSoftWT_lowLR`) to inject uncertainty maps for the Tumor Core (TC).
+3. **Intensity Logistic Regression:** Applied specifically for the Cystic Component (CC) mapping using T1c and T2w modalities (Threshold > 0.90).
+4. **Hierarchical Logic Refinement:** A custom boolean post-processing step to dramatically reduce Edema (ED) over-segmentation.
+
+![Pipeline Architecture](diag.png)
+
+---
+
+## 🔬 Topology-Aware Post-processing (Hierarchical Logic)
+
+Pediatric gliomas often suffer from geometric overlapping, where the model defaults ambiguous core regions to Edema (ED). We implemented a strict boolean hierarchy to force the soft-label predictions to be classified as core, preventing them from leaking into the edema mask:
+
+```python
+# Hierarchical Logic implemented in predict.py
+wt = wt_hard | soft_wt_add
+wt = filter_components(wt, MIN_COMPONENT)
+tc = (tc_hard | soft_wt_add) & wt      # Soft contribution strictly counts as core
+et = et_hard & tc
+edema = wt & ~tc                       # Edema is strictly the remainder of WT
 ```
 
-Esto crea `./models/` con solo los `checkpoint_final.pth` de cada fold
-(~1.3 GB en vez de 13 GB) y `./trainers/` con los trainers custom.
+---
 
-## PASO 2 — Construir la imagen
+## 📊 Validation Impact (294 OOF cases)
+
+This topological constraint yielded a massive reduction in False Positives (FP) for Edema without degrading the Whole Tumor (WT) integrity:
+
+| Region | Dice (Before) | Dice (After) | Delta | Precision (After) | FP Edema (Before) | FP Edema (After) | FP Reduction |
+|--------|---------------|---------------|--------|--------------------|--------------------|--------------------|----------------|
+| ED | 0.5089 | 0.5661 | +0.0572 | 0.5803 | 926,413 voxels | 593,119 voxels | -36.0% |
+| TC | 0.8711 | 0.8821 | +0.0109 | 0.8937 | — | — | — |
+| CC | 0.2825 | 0.3023 | +0.0197 | 0.7311 | — | — | — |
+| WT | 0.9074 | 0.9074 | 0.0000 | 0.9204 | — | — | — |
+
+> **Nota:** los FP de NETC filtrados hacia Edema bajaron de 521k a 308k, y los FP de CC bajaron de 99k a 40k.
+
+---
+
+## 📁 Repository Structure
+
+- `predict.py` — Main inference script containing the pipeline and the Hierarchical Logic. Reads from `/input`, writes to `/output`.
+- `Dockerfile` — Environment definition (CUDA 12.8, PyTorch 2.8, nnU-Net 2.8.1).
+- `trainers/` — Custom nnU-Net trainers required to load the Soft-Label models.
+- `research_scripts/` — Historical archive of our calibration, hyperparameter sweeping, and validation scripts (Not required for Docker inference).
+
+> Due to GitHub storage limits, the ~1.3 GB model checkpoints in the `models/` directory are not included in this repository. Ensure they are mounted or copied before building the image.
+
+---
+
+## 🐳 Reproducibility: Docker Usage
+
+### 1. Build the image
+
+Ensure your model checkpoints are placed in the `./models/` directory, then build the container:
 
 ```bash
 docker build -t bratsped-neurosapiens:latest .
 ```
 
-## PASO 3 — Probar LOCALMENTE (imprescindible antes de subir)
+### 2. Local Testing (BraTS Strict Environment)
 
-El challenge NO verifica los contenedores hasta cerrar las colas. Un Docker que
-falla = 0. Probadlo con el validation oficial:
+To replicate the exact Synapse evaluation environment (read-only input, no network access, flat output structure):
 
 ```bash
-# preparar carpetas de prueba
-mkdir -p /tmp/test_out
-
-# ejecutar EXACTAMENTE como el challenge (network none, input read-only, limites)
 docker run \
   --rm \
   --network none \
   --gpus=all \
-  --volume /workspace/Dataset_Validation_Oficial:/input:ro \
-  --volume /tmp/test_out:/output:rw \
+  --volume /path/to/Validation_Data:/input:ro \
+  --volume /path/to/local_output:/output:rw \
   --memory=48G --shm-size=16G \
   bratsped-neurosapiens:latest
 ```
 
-### Verificar la salida
-```bash
-# debe haber un .nii.gz por caso, en estructura PLANA (sin subcarpetas)
-ls /tmp/test_out/ | head
-ls /tmp/test_out/*.nii.gz | wc -l    # debe coincidir con el numero de casos
+### 3. Output Verification
 
-# valores correctos (0,1,2,3,4) y WT no saturado
-python3 -c "
-import nibabel as nib, numpy as np, glob
-f=sorted(glob.glob('/tmp/test_out/*.nii.gz'))[0]
-d=np.asanyarray(nib.load(f).dataobj)
-print('valores:', np.unique(d), '| WT vox:', (d>0).sum())
-"
-```
+The pipeline outputs exactly one `.nii.gz` per case directly in the root of the `/output` folder (no subdirectories).
 
-**Checklist de validacion:**
-- [ ] Un `.nii.gz` por caso en `/output`, estructura plana (sin subcarpetas).
-- [ ] Valores exactamente {0,1,2,3,4}.
-- [ ] WT no saturado (decenas de miles de voxeles, no millones).
-- [ ] El run NO intento escribir en `/input` (no crashea con read-only).
-- [ ] Termino en un tiempo razonable (muy por debajo de 12h).
+Official label mapping:
 
-### Comparar con la submission conocida (opcional pero recomendado)
-Si el output coincide con lo que subisteis en 9774214, el Docker es correcto:
-```bash
-python3 -c "
-import nibabel as nib, numpy as np, glob, os
-a='/tmp/test_out'; b='/workspace/preds_final_ensemble'  # la 9774214 local
-difs=0
-for f in sorted(glob.glob(a+'/*.nii.gz'))[:10]:
-    cid=os.path.basename(f); bf=os.path.join(b,cid)
-    if not os.path.exists(bf): continue
-    da=np.asanyarray(nib.load(f).dataobj); db=np.asanyarray(nib.load(bf).dataobj)
-    difs+=(da!=db).sum()
-print('voxeles distintos en 10 casos:', difs, '(idealmente ~0)')
-"
-```
-
-## PASO 4 — Subir a Synapse
-
-```bash
-# etiquetar para el registro de Synapse (PROJECT_ID de vuestro equipo)
-docker tag bratsped-neurosapiens:latest docker.synapse.org/PROJECT_ID/bratsped-neurosapiens:latest
-
-# login (usar token de Synapse)
-docker login docker.synapse.org
-
-# subir
-docker push docker.synapse.org/PROJECT_ID/bratsped-neurosapiens:latest
-```
-
-Luego, en la web de Synapse: Task 2 → Submission → seleccionar la imagen subida.
-
-## RECORDATORIOS CRITICOS
-- **El short paper en OpenReview debe estar enviado** — solo evaluan Docker
-  vinculado a un short paper.
-- El nombre del equipo en Synapse debe coincidir.
-- Estructura de `/output` PLANA (sin subcarpetas), o se invalida.
-- Nunca escribir en `/input`.
-
-## Notas
-- Si quereis el Docker SOLO con el ensemble (sin soft), borrad la carpeta
-  `models/Dataset503_BraTSPED/` antes del build; `predict.py` detecta su
-  ausencia y usa solo el WT hard automaticamente.
-- El ensemble de 5 folds multiplica el tiempo de inferencia x5 por caso.
-  Con ~91-100 casos de test y A10G, deberia estar muy por debajo de 12h,
-  pero vigilad el tiempo en la prueba local.
+- `1` = ET (Enhancing Tumor)
+- `2` = NET (Non-Enhancing Tumor)
+- `3` = CC (Cystic Component)
+- `4` = ED (Edema)
