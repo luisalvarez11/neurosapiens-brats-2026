@@ -9,7 +9,7 @@ This repository provides the containerized inference code used to evaluate our m
 
 ---
 
-## 🧠 Overview & Pipeline
+## Overview & Pipeline
 
 Our approach tackles the complexities of pediatric glioma segmentation by relying on a robust cascaded architecture combined with custom post-processing to avoid anatomical inconsistencies.
 
@@ -22,7 +22,7 @@ Our approach tackles the complexities of pediatric glioma segmentation by relyin
 
 ---
 
-## 🔬 Topology-Aware Post-processing (Hierarchical Logic)
+## Topology-Aware Post-processing (Hierarchical Logic)
 
 Pediatric gliomas often suffer from geometric overlapping, where the model defaults ambiguous core regions to Edema (ED). We implemented a strict boolean hierarchy to force the soft-label predictions to be classified as core, preventing them from leaking into the edema mask:
 
@@ -37,7 +37,7 @@ edema = wt & ~tc                       # Edema is strictly the remainder of WT
 
 ---
 
-## 📊 Validation Impact (294 OOF cases)
+## Validation Impact (294 OOF cases)
 
 This topological constraint yielded a massive reduction in False Positives (FP) for Edema without degrading the Whole Tumor (WT) integrity:
 
@@ -52,7 +52,7 @@ This topological constraint yielded a massive reduction in False Positives (FP) 
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 - `predict.py` — Main inference script containing the pipeline and the Hierarchical Logic. Reads from `/input`, writes to `/output`.
 - `Dockerfile` — Environment definition (CUDA 12.8, PyTorch 2.8, nnU-Net 2.8.1).
@@ -63,7 +63,7 @@ This topological constraint yielded a massive reduction in False Positives (FP) 
 
 ---
 
-## 🐳 Reproducibility: Docker Usage
+## Reproducibility: Docker Usage
 
 ### 1. Build the image
 
