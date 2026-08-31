@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-predict.py - Inferencia BraTS-PEDs 2026 Task 2 (NeuroSapiens)
-=============================================================
+predict.py - Inference Pipeline for BraTS-PEDs 2026 Task 2 (Team NeuroSapiens)
+==============================================================================
 
-Pipeline (replica la submission 9774214):
+Pipeline (replicates submission 9774214):
   1. Lee cada carpeta de caso en /input (4 modalidades: t1n, t1c, t2w, t2f).
   2. Las convierte al formato nnU-Net (_0000.._0003) en un tmp.
   3. Inferencia con el ENSEMBLE 5-fold (fine-tuning cascada), con probabilidades.
