@@ -4,19 +4,19 @@ predict.py - Inference Pipeline for BraTS-PEDs 2026 Task 2 (Team NeuroSapiens)
 ==============================================================================
 
 Pipeline (replicates submission 9774214):
-  1. Lee cada carpeta de caso en /input (4 modalidades: t1n, t1c, t2w, t2f).
-  2. Las convierte al formato nnU-Net (_0000.._0003) en un tmp.
-  3. Inferencia con el ENSEMBLE 5-fold (fine-tuning cascada), con probabilidades.
-  4. Reconstruye regiones (WT, TC, ET) a 0.5.
-  5. WT combinado: (WT_hard) OR (TC_soft > 0.5)  [si hay modelo soft disponible]
-  6. Remapeo a etiquetas oficiales: ET=1, NET=2, CC=3, ED=4.
-  7. CC: logistica de intensidad thr 0.90 sobre el NET.
-  8. Escribe cada prediccion en /output (estructura plana).
+  1. Reads each case folder in /input (4 modalities: t1n, t1c, t2w, t2f).
+  2. Converts them to nnU-Net format (_0000.._0003) in a temporary folder.
+  3. Inference using 5-fold ENSEMBLE (cascade fine-tuning) with probabilities.
+  4. Reconstructs regions (WT, TC, ET) at 0.5 threshold.
+  5. Combined WT: (WT_hard) OR (TC_soft > 0.5)  [if soft model is available].
+  6. Remap to official labels: ET=1, NET=2, CC=3, ED=4.
+  7. CC: Intensity logistic regression thr 0.90 on NET.
+  8. Writes each prediction to /output (flat structure).
 
-Requisitos del challenge:
-  - /input read-only (nunca se escribe ahi)
-  - /output plano (sin subcarpetas)
-  - network none (todo autocontenido)
+Challenge requirements:
+  - /input is read-only (never write here).
+  - /output is flat (no subdirectories).
+  - network none (fully self-contained).
 """
 
 import os
