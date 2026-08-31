@@ -1,9 +1,10 @@
-# BraTS-PEDs 2026 - Task 2 | Team NeuroSapiens
+# BraTS-PEDs 2026 - Task 2 | Team NeuroSapiens | Accepted at MICCAI 2026 (BraTS-PEDs Challenge - Oral Presentation / Top-ranked team)
 
 [![Challenge](https://img.shields.io/badge/Challenge-BraTS--PEDs_2026-blue)](https://www.synapse.org/)
 [![Task](https://img.shields.io/badge/Task-2_Pediatric_Glioma-orange)]()
 
 Official repository for the inference pipeline of **Team NeuroSapiens** (Submission ID: `9774214`) for the BraTS-PEDs 2026 Task 2 Challenge.
+
 
 This repository provides the containerized inference code used to evaluate our models, featuring a custom 5-fold ensemble, soft-label probabilistic guidance, and a novel Topology-Aware Logic Refinement.
 
